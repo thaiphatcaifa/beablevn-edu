@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,19 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
+  const { currentUser, userRole } = useAuth();
+
+  // 1. Tự động chuyển trang nếu phát hiện đã đăng nhập từ trước
+  useEffect(() => {
+    if (currentUser && userRole) {
+      console.log("Đã đăng nhập, đang chuyển hướng...");
+      if (userRole === 'admin') navigate('/admin/staff');
+      else if (userRole === 'staff') navigate('/staff/attendance');
+      else if (userRole === 'student') navigate('/student/dashboard');
+      else navigate('/');
+    }
+  }, [currentUser, userRole, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -16,14 +30,19 @@ const Login = () => {
     setError('');
     
     try {
+      // 2. Thực hiện đăng nhập
       await signInWithEmailAndPassword(auth, email, password);
-      // Đăng nhập thành công, App.jsx sẽ tự động chuyển hướng dựa trên role
+      
+      // 3. FORCE NAVIGATE: Chuyển hướng ngay lập tức (Fallback)
+      // Mặc định về trang chủ, sau đó App.jsx sẽ phân luồng tiếp
       navigate('/'); 
+      
     } catch (err) {
       console.error(err);
-      setError('Đăng nhập thất bại. Vui lòng kiểm tra Email/Mật khẩu.');
+      setError('Đăng nhập thất bại. Vui lòng kiểm tra lại Email/Mật khẩu.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -37,34 +56,26 @@ const Login = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
             <input 
-              type="email" 
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="email" required
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              value={email} onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
             <input 
-              type="password" 
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="password" required
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              value={password} onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           <button 
-            type="submit" 
-            disabled={loading}
+            type="submit" disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
           >
             {loading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>
-        <div className="mt-4 text-center text-xs text-gray-500">
-          *Liên hệ Quản trị viên nếu chưa có tài khoản.
-        </div>
       </div>
     </div>
   );
