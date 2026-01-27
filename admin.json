@@ -1,9 +1,16 @@
 {
   "users": {
-    "iDsPsOqyZnaBBaRRgCF7px8irM22": {
+    "UID_CUA_BAN": {
       "email": "helpdesk@beablevn.com",
       "name": "Super Admin",
       "role": "admin"
+    }
+  },
+  "classes": {
+    "class_demo": {
+      "name": "Lớp Demo",
+      "room": "P101",
+      "subject": "Testing"
     }
   }
 }

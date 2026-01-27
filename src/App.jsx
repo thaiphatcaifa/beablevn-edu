@@ -8,39 +8,43 @@ import AdminLayout from './components/Layouts/AdminLayout';
 import StaffLayout from './components/Layouts/StaffLayout';
 import StudentLayout from './components/Layouts/StudentLayout';
 
-// Pages - Auth
+// Pages
 import Login from './pages/Login';
 
-// Pages - Admin
+// Admin Pages
 import StaffManager from './pages/Admin/StaffManager';
-import StudentManager from './pages/Admin/StudentManager'; // Mới
-import DataManager from './pages/Admin/DataManager';       // Mới
+import StudentManager from './pages/Admin/StudentManager';
+import DataManager from './pages/Admin/DataManager';
 
-// Pages - Staff (Be Able)
-import ClassList from './pages/Staff/ClassList';           // Mới
+// Staff Pages
+import ClassList from './pages/Staff/ClassList';
 import Attendance from './pages/Staff/Attendance';
-import ScoreInput from './pages/Staff/ScoreInput';         // Mới
-import StaffNotifications from './pages/Staff/Notifications'; // Mới
+import ScoreInput from './pages/Staff/ScoreInput';
+import StaffNotifications from './pages/Staff/Notifications';
 
-// Pages - Student
+// Student Pages
 import StudentDashboard from './pages/Student/Dashboard';
-import MyAttendance from './pages/Student/MyAttendance';   // Mới
-import MyGrades from './pages/Student/MyGrades';           // Mới
-import StudentNotifications from './pages/Student/Notifications'; // Mới
+import MyAttendance from './pages/Student/MyAttendance';
+import MyGrades from './pages/Student/MyGrades';
+import StudentNotifications from './pages/Student/Notifications';
 
+// Component điều hướng thông minh
 const RedirectBasedOnRole = () => {
   const { currentUser, userRole, loading } = useAuth();
-  if (loading) return <div className="p-10 text-center">Đang tải...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center">Đang tải...</div>;
   if (!currentUser) return <Navigate to="/login" />;
+  
   if (userRole === 'admin') return <Navigate to="/admin/staff" />;
   if (userRole === 'staff') return <Navigate to="/staff/classes" />;
   if (userRole === 'student') return <Navigate to="/student/dashboard" />;
+  
   return <div className="p-10 text-center">Tài khoản chưa được phân quyền.</div>;
 };
 
+// Component bảo vệ Route
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { currentUser, userRole, loading } = useAuth();
-  if (loading) return <div>Checking...</div>;
+  if (loading) return <div>Đang kiểm tra quyền...</div>;
   if (!currentUser) return <Navigate to="/login" />;
   if (allowedRoles && !allowedRoles.includes(userRole)) return <Navigate to="/" />;
   return children;
@@ -55,28 +59,29 @@ function App() {
 
           {/* --- ADMIN --- */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
-            <Route path="staff" element={<StaffManager />} />       {/* QL Nhân sự */}
-            <Route path="students" element={<StudentManager />} />  {/* QL Học viên */}
-            <Route path="data" element={<DataManager />} />         {/* Cấu trúc dữ liệu */}
+            <Route path="staff" element={<StaffManager />} />
+            <Route path="students" element={<StudentManager />} />
+            <Route path="data" element={<DataManager />} />
           </Route>
 
           {/* --- STAFF (BE ABLE) --- */}
           <Route path="/staff" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffLayout /></ProtectedRoute>}>
-            <Route path="classes" element={<ClassList />} />            {/* Thẻ Lớp */}
-            <Route path="attendance" element={<Attendance />} />        {/* Thẻ Điểm danh */}
-            <Route path="scores" element={<ScoreInput />} />            {/* Thẻ Kết quả */}
-            <Route path="notifications" element={<StaffNotifications />} /> {/* Thẻ Thông báo */}
+            <Route path="classes" element={<ClassList />} />
+            <Route path="attendance" element={<Attendance />} />
+            <Route path="scores" element={<ScoreInput />} />
+            <Route path="notifications" element={<StaffNotifications />} />
           </Route>
 
           {/* --- STUDENT --- */}
           <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentLayout /></ProtectedRoute>}>
-            <Route path="dashboard" element={<StudentDashboard />} />      {/* Thẻ Thông tin */}
-            <Route path="attendance" element={<MyAttendance />} />         {/* Thẻ Quá trình */}
-            <Route path="scores" element={<MyGrades />} />                 {/* Thẻ Kết quả */}
-            <Route path="notifications" element={<StudentNotifications />} /> {/* Thẻ Sự kiện */}
+            <Route path="dashboard" element={<StudentDashboard />} />
+            <Route path="attendance" element={<MyAttendance />} />
+            <Route path="scores" element={<MyGrades />} />
+            <Route path="notifications" element={<StudentNotifications />} />
           </Route>
 
           <Route path="/" element={<RedirectBasedOnRole />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
     </AuthProvider>

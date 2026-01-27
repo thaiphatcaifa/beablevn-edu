@@ -1,27 +1,29 @@
-// src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getDatabase } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
-// Cấu hình Firebase của bạn
-const firebaseConfig = {
+// --- CẤU HÌNH ---
+export const firebaseConfig = {
   apiKey: "AIzaSyDib-AzfVlINhKd-EiiFhZq1PQwPCMMrBw",
-  authDomain: "bavn-learning.firebaseapp.com",
-  databaseURL: "https://bavn-learning-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bavn-learning",
-  storageBucket: "bavn-learning.firebasestorage.app",
+  authDomain: "beablevn-learning.firebaseapp.com",
+  
+  // ⚠️ QUAN TRỌNG: Link này lấy chính xác từ ảnh bạn gửi
+  databaseURL: "https://beablevn-learning-default-rtdb.asia-southeast1.firebasedatabase.app",
+  
+  projectId: "beablevn-learning",
+  storageBucket: "beablevn-learning.firebasestorage.app",
   messagingSenderId: "929043730121",
   appId: "1:929043730121:web:3f95e39b6bfe93d2f2c718",
   measurementId: "G-8TL2GYB1L8"
 };
 
-// Khởi tạo Firebase
+// 1. Khởi tạo App
 const app = initializeApp(firebaseConfig);
 
-// Khởi tạo các dịch vụ
-const analytics = getAnalytics(app);
-export const db = getDatabase(app);
+// 2. Khởi tạo Database (QUAN TRỌNG: Phải truyền URL vào đây vì server là Asia)
+export const db = getDatabase(app, firebaseConfig.databaseURL);
+
+// 3. Khởi tạo Auth
 export const auth = getAuth(app);
 
 export default app;

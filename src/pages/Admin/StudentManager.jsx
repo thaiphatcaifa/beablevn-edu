@@ -1,54 +1,99 @@
-import React, { useState } from 'react';
-import { db } from '../../firebase';
-import { ref, set } from "firebase/database";
+import React, { useState, useEffect } from 'react';
+import { db, firebaseConfig } from '../../firebase';
+import { ref, set, onValue } from "firebase/database";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 const StudentManager = () => {
+  const [classes, setClasses] = useState([]);
   const [formData, setFormData] = useState({ 
-    name: '', email: '', studentCode: '', classId: '', role: 'student' 
+    name: '', email: '', password: '', studentCode: '', classId: '', role: 'student' 
   });
+
+  useEffect(() => {
+    onValue(ref(db, 'classes'), (snapshot) => {
+      const data = snapshot.val();
+      setClasses(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
+    });
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.studentCode) return alert("Vui lòng nhập đủ thông tin!");
+    if (!formData.email || !formData.password || !formData.studentCode) return alert("Thiếu thông tin!");
+    if (formData.password.length < 6) return alert("Mật khẩu tối thiểu 6 ký tự!");
 
-    // Demo: Tạo ID từ thời gian (Thực tế nên dùng Authentication UID)
-    const fakeUid = 'student_' + Date.now(); 
-    
+    const secondaryAppName = "SecondaryApp-Student-" + Date.now();
+    let secondaryApp;
+
     try {
-      await set(ref(db, 'users/' + fakeUid), {
-        ...formData,
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      // Tạo User Auth
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
+      const newUid = userCredential.user.uid;
+
+      // Lưu Database
+      await set(ref(db, 'users/' + newUid), {
+        name: formData.name,
+        email: formData.email,
+        studentCode: formData.studentCode,
+        classId: formData.classId,
+        role: 'student',
         createdAt: new Date().toISOString()
       });
-      alert("Đã tạo hồ sơ Học viên: " + formData.name);
-      setFormData({ name: '', email: '', studentCode: '', classId: '', role: 'student' });
+
+      await signOut(secondaryAuth);
+      alert(`Đã tạo học viên: ${formData.name}\nTài khoản: ${formData.email}\nMật khẩu: ${formData.password}`);
+      setFormData({ name: '', email: '', password: '', studentCode: '', classId: '', role: 'student' });
+
     } catch (error) {
-      alert("Lỗi: " + error.message);
+      if(error.code === 'auth/email-already-in-use') alert("Email đã tồn tại!");
+      else alert("Lỗi: " + error.message);
+    } finally {
+      if (secondaryApp) deleteApp(secondaryApp);
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded shadow max-w-2xl">
-      <h2 className="text-xl font-bold mb-4 text-blue-900">Quản lý Học viên</h2>
+    <div className="bg-white p-6 rounded shadow max-w-3xl">
+      <h2 className="text-xl font-bold mb-6 text-blue-900">🎓 Quản lý Học viên</h2>
       <form onSubmit={handleCreate} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium">Họ và Tên</label>
+            <label className="block text-sm font-medium mb-1">Họ và Tên</label>
             <input className="w-full border p-2 rounded" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
           </div>
           <div>
-            <label className="block text-sm font-medium">Mã Học viên</label>
-            <input className="w-full border p-2 rounded" value={formData.studentCode} onChange={e => setFormData({...formData, studentCode: e.target.value})} required placeholder="VD: BA2301" />
+            <label className="block text-sm font-medium mb-1">Mã Học viên</label>
+            <input className="w-full border p-2 rounded" value={formData.studentCode} onChange={e => setFormData({...formData, studentCode: e.target.value})} required placeholder="VD: BA001" />
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium">Email đăng nhập</label>
-          <input type="email" className="w-full border p-2 rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input type="email" className="w-full border p-2 rounded" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Mật khẩu</label>
+            <input type="text" className="w-full border p-2 rounded" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required placeholder="Min 6 chars" />
+          </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium">Lớp học (Mã lớp)</label>
-          <input className="w-full border p-2 rounded" value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} placeholder="VD: IELTS-K12" />
+          <label className="block text-sm font-medium mb-1">Lớp học</label>
+          <select className="w-full border p-2 rounded" value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value})} required>
+            <option value="">-- Chọn Lớp --</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.name} ({c.room})</option>
+            ))}
+          </select>
         </div>
-        <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Tạo Học viên</button>
+
+        <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700">
+          + Khởi tạo Tài khoản Học viên
+        </button>
       </form>
     </div>
   );
