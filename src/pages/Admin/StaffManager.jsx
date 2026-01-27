@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { db, firebaseConfig } from '../../firebase'; // Import config để dùng cho app phụ
+import { db, firebaseConfig } from '../../firebase';
 import { ref, set, onValue, remove } from "firebase/database";
-import { initializeApp, getApp, deleteApp } from "firebase/app";
+import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 const StaffManager = () => {
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
-    password: '', // Thêm trường password
+    password: '', 
     subRole: 'teacher', 
     assignedClasses: [] 
   });
@@ -18,13 +18,13 @@ const StaffManager = () => {
 
   useEffect(() => {
     // Load danh sách lớp
-    onValue(ref(db, 'classes'), (snapshot) => {
+    const unsubClasses = onValue(ref(db, 'classes'), (snapshot) => {
       const data = snapshot.val();
       setAvailableClasses(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
     });
 
     // Load danh sách nhân sự
-    onValue(ref(db, 'users'), (snapshot) => {
+    const unsubUsers = onValue(ref(db, 'users'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
         setStaffList(Object.entries(data).map(([id, val]) => ({ id, ...val })).filter(u => u.role === 'staff'));
@@ -32,6 +32,11 @@ const StaffManager = () => {
         setStaffList([]);
       }
     });
+
+    return () => {
+      unsubClasses();
+      unsubUsers();
+    };
   }, []);
 
   const handleClassToggle = (classId) => {
@@ -48,7 +53,6 @@ const StaffManager = () => {
     if (!formData.name || !formData.email || !formData.password) return alert("Vui lòng nhập đủ tên, email và mật khẩu!");
     if (formData.password.length < 6) return alert("Mật khẩu phải có ít nhất 6 ký tự!");
 
-    // --- KỸ THUẬT SECONDARY APP (Để không bị logout Admin) ---
     const secondaryAppName = "SecondaryApp-" + Date.now();
     let secondaryApp;
     
@@ -61,7 +65,7 @@ const StaffManager = () => {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
       const newUid = userCredential.user.uid;
 
-      // 3. Lưu thông tin vào Realtime Database với UID vừa tạo
+      // 3. Lưu thông tin vào Realtime Database
       await set(ref(db, 'users/' + newUid), {
         name: formData.name,
         email: formData.email,
@@ -71,10 +75,10 @@ const StaffManager = () => {
         createdAt: new Date().toISOString()
       });
 
-      // 4. Đăng xuất khỏi app phụ để an toàn
+      // 4. Đăng xuất khỏi app phụ
       await signOut(secondaryAuth);
       
-      alert(`Đã tạo nhân sự thành công!\nEmail: ${formData.email}\nMật khẩu: ${formData.password}`);
+      alert(`Đã tạo nhân sự thành công!\nEmail: ${formData.email}`);
       setFormData({ name: '', email: '', password: '', subRole: 'teacher', assignedClasses: [] });
 
     } catch (error) {
@@ -82,8 +86,8 @@ const StaffManager = () => {
       if (error.code === 'auth/email-already-in-use') alert("Email này đã được sử dụng!");
       else alert("Lỗi: " + error.message);
     } finally {
-      // 5. Xóa app phụ để giải phóng bộ nhớ
-      if (secondaryApp) deleteApp(secondaryApp);
+      // 5. Xóa app phụ (QUAN TRỌNG: Thêm await)
+      if (secondaryApp) await deleteApp(secondaryApp);
     }
   };
 
@@ -148,7 +152,6 @@ const StaffManager = () => {
         </form>
       </div>
 
-      {/* Bảng danh sách nhân sự giữ nguyên logic cũ, chỉ cập nhật UI nếu cần */}
       <div className="bg-white p-6 rounded shadow-lg">
         <h2 className="text-xl font-bold mb-4">Danh sách Nhân sự</h2>
         <table className="w-full text-left">

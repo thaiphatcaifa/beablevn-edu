@@ -6,11 +6,6 @@
       "role": "admin"
     }
   },
-  "classes": {
-    "class_demo": {
-      "name": "Lớp Demo",
-      "room": "P101",
-      "subject": "Testing"
-    }
-  }
+  "classes": {},
+  "scores": {}
 }

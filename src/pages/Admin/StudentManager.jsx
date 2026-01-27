@@ -11,10 +11,11 @@ const StudentManager = () => {
   });
 
   useEffect(() => {
-    onValue(ref(db, 'classes'), (snapshot) => {
+    const unsubscribe = onValue(ref(db, 'classes'), (snapshot) => {
       const data = snapshot.val();
       setClasses(data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : []);
     });
+    return () => unsubscribe();
   }, []);
 
   const handleCreate = async (e) => {
@@ -44,14 +45,14 @@ const StudentManager = () => {
       });
 
       await signOut(secondaryAuth);
-      alert(`Đã tạo học viên: ${formData.name}\nTài khoản: ${formData.email}\nMật khẩu: ${formData.password}`);
+      alert(`Đã tạo học viên: ${formData.name}\nTài khoản: ${formData.email}`);
       setFormData({ name: '', email: '', password: '', studentCode: '', classId: '', role: 'student' });
 
     } catch (error) {
       if(error.code === 'auth/email-already-in-use') alert("Email đã tồn tại!");
       else alert("Lỗi: " + error.message);
     } finally {
-      if (secondaryApp) deleteApp(secondaryApp);
+      if (secondaryApp) await deleteApp(secondaryApp); // Đã thêm await
     }
   };
 
