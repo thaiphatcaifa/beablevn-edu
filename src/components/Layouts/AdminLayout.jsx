@@ -19,6 +19,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
     </svg>
   ),
+  Notification: ({ active }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke={active ? "#003366" : "#64748b"} className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+    </svg>
+  ),
   Logout: () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -71,6 +76,10 @@ const AdminLayout = () => {
           <Link to="/admin/data" className={sidebarLinkClass('data')}>
             <Icons.Data active={isActive('data')} /> <span>Dữ liệu</span>
           </Link>
+          {/* Thêm link Thông báo */}
+          <Link to="/admin/notifications" className={sidebarLinkClass('notifications')}>
+            <Icons.Notification active={isActive('notifications')} /> <span>Thông báo</span>
+          </Link>
         </nav>
 
         <div className="p-4 border-t border-slate-100">
@@ -99,6 +108,7 @@ const AdminLayout = () => {
         <Link to="/admin/staff" className={mobileLinkClass('staff')}><Icons.Staff active={isActive('staff')} /><span className="text-[10px] font-medium">Nhân sự</span></Link>
         <Link to="/admin/students" className={mobileLinkClass('students')}><Icons.Student active={isActive('students')} /><span className="text-[10px] font-medium">Học viên</span></Link>
         <Link to="/admin/data" className={mobileLinkClass('data')}><Icons.Data active={isActive('data')} /><span className="text-[10px] font-medium">Dữ liệu</span></Link>
+        <Link to="/admin/notifications" className={mobileLinkClass('notifications')}><Icons.Notification active={isActive('notifications')} /><span className="text-[10px] font-medium">Thông báo</span></Link>
       </nav>
     </div>
   );
