@@ -37,27 +37,32 @@ const MyAttendance = () => {
             let presentCount = 0;
             let lateCount = 0;
             let absentCount = 0;
+            let excusedCount = 0; // Thêm biến đếm Vắng có phép
             const history = [];
 
             // Duyệt qua từng ngày điểm danh
             Object.entries(classAtt).forEach(([date, sessionData]) => {
-                // sessionData là object: { studentId: status, ... }
                 if (sessionData && sessionData[currentUser.id]) {
                     totalSessions++;
-                    const status = sessionData[currentUser.id];
+                    
+                    // FIX LỖI ĐIỂM DANH: Trích xuất đúng thuộc tính status từ Object
+                    const dataObj = sessionData[currentUser.id];
+                    const status = typeof dataObj === 'object' ? dataObj.status : dataObj;
+                    const note = typeof dataObj === 'object' ? dataObj.note : '';
                     
                     if (status === 'present') presentCount++;
                     else if (status === 'late') lateCount++;
+                    else if (status === 'excused') excusedCount++;
                     else absentCount++;
 
-                    history.push({ date, status });
+                    history.push({ date, status, note });
                 }
             });
 
             // Sắp xếp lịch sử theo ngày giảm dần
             history.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            // Tính % chuyên cần
+            // Tính % chuyên cần (Vắng có phép không bị trừ điểm nặng như Vắng không phép)
             const diligence = totalSessions > 0 
                 ? Math.round(((presentCount + lateCount * 0.5) / totalSessions) * 100) 
                 : 100;
@@ -70,6 +75,7 @@ const MyAttendance = () => {
                 presentCount,
                 lateCount,
                 absentCount,
+                excusedCount,
                 history
             });
         });
@@ -84,7 +90,8 @@ const MyAttendance = () => {
   const renderStatus = (status) => {
       switch(status) {
           case 'present': return <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded">Có mặt</span>;
-          case 'late': return <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded">Đi muộn</span>;
+          case 'late': return <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded">Đi muộn</span>;
+          case 'excused': return <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded">Có phép</span>;
           default: return <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded">Vắng</span>;
       }
   };
@@ -110,14 +117,18 @@ const MyAttendance = () => {
                     </div>
 
                     {/* Chi tiết thống kê */}
-                    <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
+                    <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
                         <div className="p-3 text-center">
                             <div className="text-green-600 font-bold">{item.presentCount}</div>
                             <div className="text-[10px] text-slate-400">Có mặt</div>
                         </div>
                         <div className="p-3 text-center">
-                            <div className="text-yellow-600 font-bold">{item.lateCount}</div>
+                            <div className="text-orange-500 font-bold">{item.lateCount}</div>
                             <div className="text-[10px] text-slate-400">Đi muộn</div>
+                        </div>
+                        <div className="p-3 text-center">
+                            <div className="text-blue-500 font-bold">{item.excusedCount}</div>
+                            <div className="text-[10px] text-slate-400">Có phép</div>
                         </div>
                         <div className="p-3 text-center">
                             <div className="text-red-500 font-bold">{item.absentCount}</div>
@@ -125,15 +136,25 @@ const MyAttendance = () => {
                         </div>
                     </div>
 
-                    {/* Lịch sử chi tiết (Cuộn nếu dài) */}
-                    <div className="max-h-48 overflow-y-auto p-4">
-                        <p className="text-xs font-bold text-slate-400 mb-2 uppercase">Lịch sử điểm danh</p>
+                    {/* Lịch sử chi tiết */}
+                    <div className="max-h-60 overflow-y-auto p-4 custom-scrollbar">
+                        <p className="text-xs font-bold text-slate-400 mb-3 uppercase">Lịch sử điểm danh</p>
                         {item.history.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {item.history.map((record, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-slate-600 font-medium">{record.date}</span>
-                                        {renderStatus(record.status)}
+                                    <div key={idx} className="flex flex-col border-b border-slate-50 pb-3 last:border-0 last:pb-0">
+                                        <div className="flex justify-between items-center text-sm mb-1">
+                                            <span className="text-slate-600 font-medium">
+                                                {new Date(record.date).toLocaleDateString('vi-VN')}
+                                            </span>
+                                            {renderStatus(record.status)}
+                                        </div>
+                                        {/* Hiển thị lý do nếu có */}
+                                        {record.note && (
+                                            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                                                <span className="font-bold text-slate-400">Lý do: </span>{record.note}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
