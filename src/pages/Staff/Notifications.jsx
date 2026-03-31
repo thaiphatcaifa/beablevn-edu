@@ -26,6 +26,11 @@ const Notifications = () => {
   // State quản lý việc thu gọn/mở rộng thông báo
   const [expandedId, setExpandedId] = useState(null);
 
+  // State cho Bộ lọc danh sách
+  const [filterClass, setFilterClass] = useState('all');
+  const [filterLabel, setFilterLabel] = useState('all'); // State mới cho bộ lọc Loại
+  const [searchKeyword, setSearchKeyword] = useState('');
+
   const LINK_TITLES = ["Link điểm danh", "Link sự kiện", "Link bài tập", "Link kiểm tra"];
   const LABELS = [
       { id: 'báo bài', color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -63,10 +68,8 @@ const Notifications = () => {
 
     setLoading(true);
     try {
-      const newNotiRef = push(ref(db, 'notifications'));
       const payload = {
         date: new Date().toISOString(), 
-        scope: scope,
         author: currentUser.name,
         type: postMode 
       };
@@ -80,7 +83,22 @@ const Notifications = () => {
           payload.linkUrl = linkUrl;
       }
 
-      await set(newNotiRef, payload);
+      if (scope === 'all' && currentUser?.role !== 'admin') {
+          if (classes.length === 0) {
+              alert("Bạn chưa được phân công lớp nào!");
+              setLoading(false);
+              return;
+          }
+          const promises = classes.map(c => {
+              const newNotiRef = push(ref(db, 'notifications'));
+              return set(newNotiRef, { ...payload, scope: c.id });
+          });
+          await Promise.all(promises);
+      } else {
+          const newNotiRef = push(ref(db, 'notifications'));
+          await set(newNotiRef, { ...payload, scope: scope });
+      }
+
       alert("Đăng thông báo thành công!");
       setTitle('');
       setContent('');
@@ -99,7 +117,7 @@ const Notifications = () => {
   }
 
   const getScopeName = (scopeId) => {
-      if(scopeId === 'all') return "Toàn bộ hệ thống";
+      if(scopeId === 'all') return "Toàn hệ thống";
       const cls = classes.find(c => c.id === scopeId);
       return cls ? `Lớp ${cls.name}` : "Lớp đã xóa";
   };
@@ -108,9 +126,47 @@ const Notifications = () => {
       setExpandedId(prev => prev === id ? null : id);
   };
 
+  // LOGIC LỌC HIỂN THỊ DANH SÁCH
+  const displayedNotis = notiList.filter(noti => {
+      const isAdmin = currentUser?.role === 'admin';
+      const assignedClasses = currentUser?.assignedClasses || [];
+
+      // 1. Chỉ hiển thị thông báo đối với các lớp mà tài khoản phụ trách
+      let canView = false;
+      if (isAdmin) {
+          canView = true;
+      } else {
+          if (assignedClasses.includes(noti.scope)) {
+              canView = true;
+          }
+      }
+      if (!canView) return false;
+
+      // 2. Lọc theo lớp
+      if (filterClass !== 'all' && noti.scope !== filterClass) return false;
+
+      // 3. Lọc theo Loại/Nhãn (Bổ sung mới)
+      if (filterLabel !== 'all') {
+          if (filterLabel === 'link') {
+              if (noti.type !== 'link') return false;
+          } else {
+              if (noti.type !== 'content' || noti.label !== filterLabel) return false;
+          }
+      }
+
+      // 4. Lọc theo tiêu đề (Keywords)
+      if (searchKeyword) {
+          const keyword = searchKeyword.toLowerCase();
+          if (!noti.title?.toLowerCase().includes(keyword)) return false;
+      }
+
+      return true;
+  });
+
   // Icons tối giản
   const IconContent = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>;
   const IconLink = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>;
+  const IconSearch = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-400"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>;
 
   return (
     <div className="space-y-8 animate-fade-in-up pb-10 mt-16 md:mt-0">
@@ -122,7 +178,6 @@ const Notifications = () => {
       </div>
 
       <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-100 shadow-sm max-w-3xl">
-        {/* TÙY CHỌN LOẠI ĐĂNG */}
         <div className="flex gap-3 mb-6">
             <button 
                 onClick={() => setPostMode('content')}
@@ -138,7 +193,6 @@ const Notifications = () => {
             </button>
         </div>
 
-        {/* PHẠM VI HIỂN THỊ */}
         <div className="mb-4">
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phạm vi hiển thị</label>
           <select 
@@ -151,7 +205,6 @@ const Notifications = () => {
           </select>
         </div>
 
-        {/* FORM NHẬP LIỆU */}
         {postMode === 'content' ? (
             <div className="animate-fade-in">
                 <div className="mb-4">
@@ -228,8 +281,46 @@ const Notifications = () => {
       {/* DANH SÁCH THÔNG BÁO ĐÃ TẠO */}
       <div className="border-t border-slate-200 pt-8">
           <h3 className="text-lg font-bold text-[#003366] mb-4">Danh sách Thông báo đã tạo</h3>
+          
+          {/* BỘ LỌC TÌM KIẾM */}
+          <div className="flex flex-col md:flex-row gap-3 mb-6">
+              <select 
+                  className="w-full md:w-auto p-2.5 border border-slate-200 rounded-lg outline-none focus:border-[#003366] text-sm text-slate-700 bg-slate-50 transition-colors hover:border-slate-300"
+                  value={filterClass}
+                  onChange={e => setFilterClass(e.target.value)}
+              >
+                  <option value="all">-- Tất cả lớp phụ trách --</option>
+                  {classes.map(c => <option key={c.id} value={c.id}>Lớp {c.name}</option>)}
+              </select>
+
+              <select 
+                  className="w-full md:w-auto p-2.5 border border-slate-200 rounded-lg outline-none focus:border-[#003366] text-sm text-slate-700 bg-slate-50 transition-colors hover:border-slate-300"
+                  value={filterLabel}
+                  onChange={e => setFilterLabel(e.target.value)}
+              >
+                  <option value="all">-- Tất cả loại thông báo --</option>
+                  <option value="báo bài">Báo bài</option>
+                  <option value="quan trọng">Quan trọng</option>
+                  <option value="sự kiện">Sự kiện</option>
+                  <option value="link">Hyperlink (Link)</option>
+              </select>
+
+              <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <IconSearch />
+                  </div>
+                  <input 
+                      type="text" 
+                      className="w-full pl-10 p-2.5 border border-slate-200 rounded-lg outline-none focus:border-[#003366] text-sm text-slate-700 bg-slate-50 transition-colors hover:border-slate-300"
+                      placeholder="Tìm kiếm theo tiêu đề..." 
+                      value={searchKeyword}
+                      onChange={e => setSearchKeyword(e.target.value)}
+                  />
+              </div>
+          </div>
+
           <div className="space-y-4">
-              {notiList.map(noti => {
+              {displayedNotis.map(noti => {
                   const isExpanded = expandedId === noti.id;
                   
                   return (
@@ -248,7 +339,7 @@ const Notifications = () => {
                                   </span>
                               )}
                               <span className="text-[11px] text-slate-400 font-medium font-mono">{new Date(noti.date).toLocaleDateString('vi-VN')}</span>
-                              <span className="text-[11px] font-bold text-[#003366] bg-slate-50 px-2 py-0.5 rounded">{getScopeName(noti.scope)}</span>
+                              <span className="text-[11px] font-bold text-[#003366] bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{getScopeName(noti.scope)}</span>
                           </div>
                           <button 
                               onClick={() => handleDelete(noti.id)}
@@ -259,7 +350,6 @@ const Notifications = () => {
                           </button>
                       </div>
                       
-                      {/* KHU VỰC HIỂN THỊ TÙY BIẾN THEO LOẠI */}
                       <div 
                           className={noti.type === 'content' ? "cursor-pointer group/content" : ""}
                           onClick={() => { if(noti.type === 'content') toggleExpand(noti.id); }}
@@ -290,7 +380,7 @@ const Notifications = () => {
                       </div>
                   </div>
               )})}
-              {notiList.length === 0 && <p className="text-slate-400 text-sm italic text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">Chưa có thông báo nào.</p>}
+              {displayedNotis.length === 0 && <p className="text-slate-400 text-sm italic text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">Không tìm thấy thông báo nào phù hợp.</p>}
           </div>
       </div>
     </div>
